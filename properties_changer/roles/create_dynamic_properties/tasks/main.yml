@@ -1,0 +1,20 @@
+# Add in the dictionary all the well-formatted parameters. Ignore comments and bad-formatted parameters.
+- name: dynamic set of variables
+  set_fact: 
+    dict: "{{ dict | combine( { item.split('=')[0]: item.split('=')[1] } ) }}"
+  when: item is regex("^.*=.*$")
+  loop: "{{ lookup('file', '{{ inventory_dir }}/{{ properties_file }}').splitlines() }}"
+
+- name: copy generic properties files
+  copy: 
+    src: "{{ playbook_dir }}/common/{{ properties_file}}"
+    dest: /tmp/{{ properties_file }}
+
+
+- name: change environment-dependant variables on remote properties
+  lineinfile:
+    path: /tmp/{{ properties_file }}
+    regexp: '^{{ item }}$'
+    line: '{{ item }}{{ dict[item[:-1]] | default("") }}'
+  when: item is regex("^.*=$")
+  loop: "{{ lookup('file', '{{ playbook_dir }}/common/{{ properties_file }}').splitlines() }}"
